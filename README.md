@@ -5,7 +5,7 @@
 1. Run the following command in your Node-RED user directory - typically `~/.node-red`
 
     ```bash
-    npm install git+ssh://git@github.com/manazoid/node-red-context-mongodb.git
+    npm install git+https://github.com/manazoid/node-red-context-mongodb.git
     ```
 
 1. Add a configuration in `settings.js` under `contextStorage`:

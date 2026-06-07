@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/manazoid/node-red-context-mongodb.git"
+    "url": "git+https://github.com/manazoid/node-red-context-mongodb.git"
   },
   "dependencies": {
     "@node-red/util": "^2.2.2",
