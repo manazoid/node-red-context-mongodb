@@ -2,10 +2,9 @@
   "name": "node-red-context-mongodb",
   "version": "0.0.1",
   "author": {
-    "name": "Chris Rahmé",
-    "email": "chris.rahme@hotmail.com",
-    "url": "https://chrisrahme.netlify.app",
-    "github": "chrisrahme"
+    "name": "Manazoid",
+    "email": "uralkir@gmail.com",
+    "github": "manazoid"
   },
   "description": "A Node-RED Context store plugin backed by MongoDB",
   "main": "index.js",
@@ -14,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ChrisRahme/node-red-context-mongo.git"
+    "url": "git+ssh://git@github.com/manazoid/node-red-context-mongodb.git"
   },
   "dependencies": {
     "@node-red/util": "^2.2.2",
