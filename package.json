@@ -9,6 +9,9 @@
   },
   "description": "A Node-RED Context store plugin backed by MongoDB",
   "main": "index.js",
+  "scripts": {
+    "test": "node test/sync-context.test.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/ChrisRahme/node-red-context-mongo.git"

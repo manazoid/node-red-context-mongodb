@@ -34,8 +34,9 @@ function MongoContext(config) {
         '_collections': mongoose.model('_collections', {
             _id  : String,
             date : mongoose.Schema.Types.Date
-        })
+        }, '_collections')
     }   // mongoose.model
+    this['cache']    = {}
 }
 
 
@@ -108,12 +109,39 @@ MongoContext.prototype.getModel = function(collection) {
         this['models'][collection] = mongoose.model(collection, {
             _id   : String,
             value : mongoose.Schema.Types.Mixed
-        })
+        }, collection)
 
         this.set('_collections', collection, Date.now(), null)
     }
 
     return this['models'][collection]
+}
+
+
+MongoContext.prototype.getCache = function(scope) {
+    if (!this['cache'][scope]) {
+        this['cache'][scope] = {}
+    }
+
+    return this['cache'][scope]
+}
+
+
+MongoContext.prototype.hydrateCache = function() {
+    return this['client'].db.listCollections().toArray().then(collections => {
+        return Promise.all(collections
+            .map(collection => collection.name)
+            .filter(name => name && !name.startsWith('system.'))
+            .map(name => {
+                return this.getModel(name).find({}, {_id: true, value: true}).lean().then(docs => {
+                    const cache = this.getCache(name)
+
+                    docs.forEach(doc => {
+                        cache[doc['_id']] = evaluateFunctions(doc['value'])
+                    })
+                })
+            }))
+    })
 }
 
 
@@ -166,8 +194,14 @@ MongoContext.prototype.open = function() {
 
         this['client'].once('open', () => {
             console.log('\n[MONGODB CONTEXT] Connected to MongoDB Context at ' + uri)
-            resolve()
-            console.log('\n[MONGODB CONTEXT] MongoDB Context resolved')
+            this.hydrateCache().then(() => {
+                resolve()
+                console.log('\n[MONGODB CONTEXT] MongoDB Context resolved')
+            }).catch(err => {
+                console.error('\n[MONGODB CONTEXT] Failed to hydrate MongoDB Context cache')
+                console.error(err)
+                reject(err)
+            })
         })
     })
 }
@@ -220,6 +254,13 @@ MongoContext.prototype.get = function(scope, key, callback) {
         }
 
         const keys       = key.filter((v, i, a) => a.indexOf(v) === i)
+
+        if (!callback) {
+            const cache = this.getCache(scope)
+            const values = keys.map(k => cache[k])
+            return values.length === 1 ? values[0] : values
+        }
+
         const query      = {_id: {$in: keys}}
         const projection = {_id: false, value: true}
         const options    = {limit: keys.length}
@@ -289,6 +330,13 @@ MongoContext.prototype.set = function(scope, key, value, callback) {
             for (let i = key.length; i < value.length; i++) key.push(null)
         }
 
+        const cache = this.getCache(scope)
+        key.forEach((k, i) => {
+            if (k !== null) {
+                cache[k.toString()] = value[i]
+            }
+        })
+
         const pairs = stringifyFunctions(key.map(function(k, i) {
             return {'_id': k.toString(), 'value': value[i]}
         })).map(function(doc) {
@@ -316,6 +364,9 @@ MongoContext.prototype.set = function(scope, key, value, callback) {
                 }
             } else {
                 console.log('\n[MONGODB CONTEXT] Set key/value pair in MongoDB Context')
+                if (callback) {
+                    callback(null)
+                }
             }
         })
     } catch (err) {
@@ -345,6 +396,10 @@ MongoContext.prototype.keys = function(scope, callback) {
     }
 
     try {
+        if (!callback) {
+            return Object.keys(this.getCache(scope))
+        }
+
         this.getModel(scope).find({}, {_id: true, value: false}, {}, (err, docs) => {
             if (err) {
                 console.error('\n[MONGODB CONTEXT] Failed to find keys from MongoDB Context')
@@ -381,6 +436,7 @@ MongoContext.prototype.delete = function(scope) {
     console.log(`[MONGODB CONTEXT] Deleting scope ${scope}`)
 
     const collection = scope
+    delete this['cache'][scope]
 
     return new Promise((resolve, reject) => {
         this.getModel(scope).deleteMany({}, (err, result) => {
